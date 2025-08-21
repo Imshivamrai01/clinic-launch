@@ -1,0 +1,157 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  logoUrl      String?
+  primaryColor String?  @default("#2563EB")
+  contactInfo  Json?
+
+  users        User[]
+  doctors      Doctor[]
+  departments  Department[]
+  services     Service[]
+  appointments Appointment[]
+  articles     Article[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          UserRole  @default(RECEPTIONIST)
+
+  tenantId      String
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Relations
+  articles      Article[]
+  appointments  Appointment[] // IMPROVEMENT: Added relation to appointments
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// FIX: THE MISSING ENUM IS NOW ADDED
+enum UserRole {
+  OWNER
+  MANAGER
+  RECEPTIONIST
+  DOCTOR
+  PATIENT
+}
+
+model Doctor {
+  id              String   @id @default(cuid())
+  title           String
+  firstName       String
+  lastName        String
+  slug            String   @unique
+  profileImageUrl String?
+  bio             String?  @db.Text
+  specialization  String
+  experienceYears Int      @default(0)
+
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  departments     Department[] @relation("DepartmentDoctors")
+  appointments    Appointment[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Department {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?  @db.Text
+
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  services    Service[]
+  doctors     Doctor[] @relation("DepartmentDoctors")
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Service {
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  description  String?  @db.Text
+  durationMins Int
+  price        Float
+
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+
+  appointments Appointment[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Appointment {
+  id               String   @id @default(cuid())
+  // Kept for non-registered users, but linked to a user if they are registered
+  patientFirstName String
+  patientLastName  String
+  patientEmail     String
+  patientPhone     String
+  reason           String?  @db.Text
+  startTime        DateTime
+  endTime          DateTime
+
+  tenantId         String
+  tenant           Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // IMPROVEMENT: Linked appointment to the user who booked it (the patient)
+  patientId        String
+  patient          User       @relation(fields: [patientId], references: [id])
+
+  doctorId         String
+  doctor           Doctor     @relation(fields: [doctorId], references: [id])
+
+  serviceId        String
+  service          Service    @relation(fields: [serviceId], references: [id])
+
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+}
+
+model Article {
+  id        String   @id @default(cuid())
+  title     String
+  slug      String   @unique
+  content   String   @db.Text
+
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
