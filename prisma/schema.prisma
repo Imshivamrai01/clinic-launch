@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"] // <-- FIX FOR VERCEL
 }
 
 datasource db {
@@ -40,13 +41,12 @@ model User {
 
   // Relations
   articles      Article[]
-  appointments  Appointment[] // IMPROVEMENT: Added relation to appointments
+  appointments  Appointment[]
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
 
-// FIX: THE MISSING ENUM IS NOW ADDED
 enum UserRole {
   OWNER
   MANAGER
@@ -114,7 +114,6 @@ model Service {
 
 model Appointment {
   id               String   @id @default(cuid())
-  // Kept for non-registered users, but linked to a user if they are registered
   patientFirstName String
   patientLastName  String
   patientEmail     String
@@ -126,7 +125,6 @@ model Appointment {
   tenantId         String
   tenant           Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  // IMPROVEMENT: Linked appointment to the user who booked it (the patient)
   patientId        String
   patient          User       @relation(fields: [patientId], references: [id])
 
